@@ -12,6 +12,7 @@ template = env.get_template("switch_template")
 con = create_connection()
 create_data(con)
 
+
 def render_device_templates() -> t.Dict[str, t.Any]:
     devices = get_netbox_devices()
     device_ipam = get_device_ipam_data(con)

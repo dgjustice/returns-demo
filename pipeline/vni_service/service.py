@@ -1,6 +1,7 @@
 import socket
 import typing as t
 from dataclasses import dataclass
+from returns.io import IOResultE, impure_safe
 
 
 @dataclass
@@ -34,6 +35,7 @@ def l3vni_row_factory(cursor, row) -> L3vniRow:
     return L3vniRow(row[0], get_af(row[1]), row[2], row[3], row[4].decode("utf-8"))
 
 
+@impure_safe
 def get_vni_data(con) -> t.Dict[str, t.Any]:
     """Retreive vni data rows"""
     con.row_factory = l3vni_row_factory
@@ -53,6 +55,7 @@ def device_ipam_row_factory(cursor, row) -> DeviceIPAMRow:
     )
 
 
+@impure_safe
 def get_device_ipam_data(con) -> t.Dict[t.Tuple[str, str], t.Any]:
     """Retreive device IPAM rows"""
     con.row_factory = device_ipam_row_factory

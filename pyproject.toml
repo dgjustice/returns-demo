@@ -9,6 +9,7 @@ python = "^3.9"
 returns = "^0.16.0"
 httpx = "^0.18.2"
 Jinja2 = "^3.0.1"
+trio = "^0.19.0"
 
 [tool.poetry.dev-dependencies]
 black = "^21.6b0"
