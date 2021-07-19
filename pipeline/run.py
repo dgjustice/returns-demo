@@ -31,8 +31,14 @@ def render_device_template(
     lo5_cidr = f"{socket.inet_ntop(lo5_meta.addr_family, lo5_meta.ip_address)}/{lo5_meta.netmask}"
     site_svi_desc = f"Routed SVI for site {site_name}"
     site_vni = site_vni_data[site_name].vni
-    site_svi_cidr = f"{socket.inet_ntop(socket.AF_INET, site_vni_data[site_name].ip_address)}/{site_vni_data[site_name].netmask}"
-    management_ip_cidr = f"{socket.inet_ntop(mgmt_meta.addr_family, mgmt_meta.ip_address)}/{mgmt_meta.netmask}"
+    site_svi_cidr = (
+        f"{socket.inet_ntop(socket.AF_INET, site_vni_data[site_name].ip_address)}/"
+        + f"{site_vni_data[site_name].netmask}"
+    )
+    management_ip_cidr = (
+        f"{socket.inet_ntop(mgmt_meta.addr_family, mgmt_meta.ip_address)}/"
+        + f"{mgmt_meta.netmask}"
+    )
     template_vars = TemplateVars(
         hostname=hostname,
         lo5_cidr=lo5_cidr,

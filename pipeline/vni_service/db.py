@@ -13,8 +13,8 @@ def create_connection() -> t.Any:
 def create_data(con) -> None:
     with con:
         con.execute(
-            """CREATE TABLE l3vni
-                    (vni INTEGER, addr_family INTEGER, ip_address BLOB, netmask INTEGER, site TEXT)"""
+            "CREATE TABLE l3vni "
+            + "(vni INTEGER, addr_family INTEGER, ip_address BLOB, netmask INTEGER, site TEXT)"
         )
         con.executemany(
             """INSERT INTO l3vni VALUES (?, ?, ?, ?, ?)""",
@@ -24,8 +24,8 @@ def create_data(con) -> None:
             ),
         )
         con.execute(
-            """CREATE TABLE device_ipam
-                    (addr_family INTEGER, ip_address BLOB, netmask INTEGER, interface TEXT, device TEXT)"""
+            "CREATE TABLE device_ipam "
+            + "(addr_family INTEGER, ip_address BLOB, netmask INTEGER, interface TEXT, device TEXT)"
         )
         con.executemany(
             """INSERT INTO device_ipam VALUES (?, ?, ?, ?, ?)""",
