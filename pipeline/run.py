@@ -2,15 +2,15 @@ import socket
 import typing as t
 from dataclasses import asdict
 from pathlib import Path
-from returns.io import IO, IOResult, IOResultE, IOSuccess
+
+from returns.io import IOSuccess
+from returns.iterables import Fold
+from returns.result import ResultE, Success, safe
+
 from pipeline.netbox_service.service import get_netbox_devices
 from pipeline.templates import TemplateVars, env
 from pipeline.vni_service.db import create_connection, create_data
 from pipeline.vni_service.service import get_device_ipam_data, get_vni_data
-from returns.curry import partial
-from returns.result import ResultE, safe
-from returns.pointfree import bind_result
-from returns.iterables import Fold
 
 template = env.get_template("switch_template")
 
@@ -21,7 +21,9 @@ create_data(CON)
 
 
 @safe
-def render_device_template(device, device_ipam, site_vni_data):
+def render_device_template(
+    device, device_ipam, site_vni_data
+) -> t.Tuple[str, t.Dict[str, str]]:
     hostname = device["name"]
     site_name = device["site"]["name"]
     lo5_meta = device_ipam[(hostname, "loopback 5")]
@@ -39,32 +41,34 @@ def render_device_template(device, device_ipam, site_vni_data):
         site_svi_cidr=site_svi_cidr,
         management_ip_cidr=management_ip_cidr,
     )
-    return template.render(asdict(template_vars))
+    return hostname, template.render(asdict(template_vars))
 
 
-def render_all(ext_data) -> t.Dict[str, ResultE[str]]:
-    device_templates = IO({})
-    devices = ext_data[0]
-    for device in devices:
-        device_templates[device["name"]] = get_device_ipam_data(
-            CON, device["name"]
-        ).bind(lambda ipam: render_device_template(device, ipam, ext_data[1]))
-    return device_templates
+def render_all(ext_data):
+    devices, vni_data = ext_data
+    return Fold.collect(
+        map(
+            lambda device: get_device_ipam_data(CON, device["name"]).bind(
+                lambda ipam: render_device_template(device, ipam, vni_data)
+            ),
+            devices,
+        ),
+        Success(()),
+    )
 
 
 @safe
 def write_configs_to_file(devices: t.Dict[str, ResultE[str]], basepath: str) -> None:
     path = Path(basepath)
-    for hostname, template_res in devices.items():
+    for hostname, template in devices:
         with open(path.joinpath(hostname), "w") as fp:
-            template_res.map(fp.write).unwrap()
+            fp.write(template)
 
 
 def run() -> t.Dict[str, t.Any]:
     Fold.collect([get_netbox_devices(), get_vni_data(CON)], IOSuccess(())).bind(
         render_all
-    )
-    write_configs_to_file(temps).unwrap()
+    ).bind(lambda devices: write_configs_to_file(devices, "output")).unwrap()
 
 
 templates = run()
