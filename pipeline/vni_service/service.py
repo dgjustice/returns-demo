@@ -1,7 +1,7 @@
 import socket
 import typing as t
 from dataclasses import dataclass
-from returns.io import IOResultE, impure_safe
+from returns.io import impure_safe
 
 
 @dataclass
@@ -56,11 +56,11 @@ def device_ipam_row_factory(cursor, row) -> DeviceIPAMRow:
 
 
 @impure_safe
-def get_device_ipam_data(con) -> t.Dict[t.Tuple[str, str], t.Any]:
+def get_device_ipam_data(con, hostname: str) -> t.Dict[t.Tuple[str, str], t.Any]:
     """Retreive device IPAM rows"""
     con.row_factory = device_ipam_row_factory
     with con:
-        data = con.execute("SELECT * FROM device_ipam")
+        data = con.execute("SELECT * FROM device_ipam WHERE device=?", (hostname,))
     device_data = {}
     for row in data:
         device_data[(row.device, row.interface)] = row

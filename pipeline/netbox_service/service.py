@@ -25,7 +25,7 @@ def get_live_data() -> t.List[t.Dict[str, t.Any]]:
     return devices
 
 
-def get_netbox_devices(mock: bool = True):
+def get_netbox_devices(mock: bool = True) -> IOResultE[t.List[t.Dict[str, t.Any]]]:
     if mock:
         return get_mock_data()
     return get_live_data()
