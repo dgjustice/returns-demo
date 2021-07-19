@@ -5,6 +5,8 @@ from pathlib import Path
 
 from returns.io import IOSuccess
 from returns.iterables import Fold
+from returns.pipeline import flow
+from returns.pointfree import bind
 from returns.result import ResultE, Success, safe
 
 from pipeline.netbox_service.service import get_netbox_devices
@@ -77,4 +79,5 @@ def run() -> t.Dict[str, t.Any]:
     ).bind(lambda devices: write_configs_to_file(devices, "output")).unwrap()
 
 
-templates = run()
+if __name__ == "__main__":
+    run()
