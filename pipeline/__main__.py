@@ -5,27 +5,25 @@ import typing as t
 from dataclasses import asdict
 from pathlib import Path
 
+from returns.context import RequiresContext
+from returns.curry import partial
+from returns.functions import tap
 from returns.io import IOSuccess
 from returns.iterables import Fold
 from returns.pipeline import flow
-from returns.pointfree import bind
-from returns.result import Result, ResultE, Success, safe
+from returns.pointfree import bind, map_
+from returns.result import ResultE, Success, safe
+from returns.context.requires_context import RequiresContext
 
 from pipeline.config_templates.templates import TemplateVars, env
 from pipeline.netbox_service.service import get_netbox_devices
 from pipeline.vni_service.db import create_connection, create_data
 from pipeline.vni_service.service import get_device_ipam_data, get_vni_data
 
-template = env.get_template("switch_template")
 
-# Big, ugly side-effect here, it's a demo. ¯\_(ツ)_/¯
-# TODO, use context
-CON = create_connection()
-create_data(CON)
-
-
-@safe
-def render_device_template(device, device_ipam, site_vni_data) -> t.Tuple[str, str]:
+def render_device_template(
+    device, device_ipam, site_vni_data
+) -> RequiresContext[ResultE[t.Tuple[str, str]], t.Any]:
     """Render a single device configuration template."""
     hostname: str = device["name"]
     site_name = device["site"]["name"]
@@ -50,25 +48,33 @@ def render_device_template(device, device_ipam, site_vni_data) -> t.Tuple[str, s
         site_svi_cidr=site_svi_cidr,
         management_ip_cidr=management_ip_cidr,
     )
-    return hostname, template.render(asdict(template_vars))
+    return RequiresContext(
+        safe(lambda template: (hostname, template.render(asdict(template_vars))))
+    )
 
 
-def render_all(ext_data):
+def render_all(ext_data) -> RequiresContext[ResultE[t.Tuple[t.Tuple[str, str]]], t.Any]:
     """Helper function to wrap rendering of all templates."""
     devices, vni_data = ext_data
-    return Fold.collect(
-        map(
-            lambda device: get_device_ipam_data(CON, device["name"]).bind(
-                lambda ipam: render_device_template(device, ipam, vni_data)
+    return RequiresContext(
+        lambda con: Fold.collect(
+            map(
+                lambda device: get_device_ipam_data(con, device["name"]).map(
+                    lambda ipam: render_device_template(  #  type: ignore
+                        device, ipam, vni_data
+                    )
+                ),
+                devices,
             ),
-            devices,
-        ),
-        Success(()),
+            Success(()),
+        )
     )
 
 
 @safe
-def write_configs_to_file(devices: t.Tuple[t.Tuple[str, str], ...], basepath: str) -> None:
+def write_configs_to_file(
+    devices: t.Tuple[t.Tuple[str, str], ...], basepath: str
+) -> None:
     """Write device configs to a file."""
     path = Path(basepath)
     for hostname, template in devices:
@@ -78,9 +84,14 @@ def write_configs_to_file(devices: t.Tuple[t.Tuple[str, str], ...], basepath: st
 
 def run() -> None:
     """Do all the things!"""
+    con = create_connection()
+    create_data(con)
+    template = env.get_template("switch_template")
     flow(
-        Fold.collect([get_netbox_devices(), get_vni_data(CON)], IOSuccess(())),
-        bind(render_all),
+        Fold.collect([get_netbox_devices(), get_vni_data(con)], IOSuccess(())),
+        map_(render_all),
+        bind(lambda res: res(con)),
+        bind(partial(map, lambda fn: fn(template))),
         bind(lambda devices: write_configs_to_file(devices, "output")),
     ).unwrap()
     print("Success!")
