@@ -1,3 +1,5 @@
+"""Functions and structs to support the VNI service."""
+
 import socket
 import typing as t
 from dataclasses import dataclass

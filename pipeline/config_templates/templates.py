@@ -1,8 +1,10 @@
+"""Template store for building configuration snippets."""
+
 from dataclasses import dataclass
 
 from jinja2 import DictLoader, Environment, StrictUndefined
 
-from pipeline.config import GLOBAL_VARS
+from pipeline.app_config import GLOBAL_VARS
 
 
 @dataclass

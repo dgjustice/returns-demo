@@ -197,6 +197,24 @@ MarkupSafe = ">=2.0"
 i18n = ["Babel (>=2.7)"]
 
 [[package]]
+name = "lambdas"
+version = "0.1.0"
+description = "Typed lambdas that are short and readable"
+category = "main"
+optional = false
+python-versions = "^3.6"
+develop = false
+
+[package.dependencies]
+typing-extensions = "^3.7"
+
+[package.source]
+type = "git"
+url = "https://github.com/dry-python/lambdas.git"
+reference = "master"
+resolved_reference = "8d88a800f586b73beff4bf8715b26a636b1f20b7"
+
+[[package]]
 name = "markupsafe"
 version = "2.0.1"
 description = "Safely add untrusted strings to HTML/XML markup."
@@ -401,7 +419,7 @@ python-versions = "*"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.9"
-content-hash = "57ccbcb8f52a85bad12f8637598911ae544a9fd0b933e3a31d065d454ea4c991"
+content-hash = "607d6be31464f03943a2b028baa807d5254d3f581aa6b148376c2aa19515e800"
 
 [metadata.files]
 anyio = [
@@ -511,6 +529,7 @@ jinja2 = [
     {file = "Jinja2-3.0.1-py3-none-any.whl", hash = "sha256:1f06f2da51e7b56b8f238affdd6b4e2c61e39598a378cc49345bc1bd42a978a4"},
     {file = "Jinja2-3.0.1.tar.gz", hash = "sha256:703f484b47a6af502e743c9122595cc812b0271f661722403114f71a79d0f5a4"},
 ]
+lambdas = []
 markupsafe = [
     {file = "MarkupSafe-2.0.1-cp36-cp36m-macosx_10_9_x86_64.whl", hash = "sha256:f9081981fe268bd86831e5c75f7de206ef275defcb82bc70740ae6dc507aee51"},
     {file = "MarkupSafe-2.0.1-cp36-cp36m-manylinux1_i686.whl", hash = "sha256:0955295dd5eec6cb6cc2fe1698f4c6d84af2e92de33fbcac4111913cd100a6ff"},

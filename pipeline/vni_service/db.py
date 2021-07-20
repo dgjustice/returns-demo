@@ -1,7 +1,9 @@
+"""DB utilities for our VNI service."""
+
 import sqlite3
 import typing as t
 
-from pipeline.config import SQLITE_DB_NAME
+from pipeline.app_config import SQLITE_DB_NAME
 
 
 def create_connection() -> t.Any:

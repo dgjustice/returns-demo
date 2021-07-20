@@ -1,3 +1,5 @@
+"""Mock data for a Netbox request"""
+
 nb_data = [
     {
         "id": 1,

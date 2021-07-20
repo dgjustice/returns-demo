@@ -1,3 +1,5 @@
+"""Entrypoint to deploy configurations from collected data."""
+
 import socket
 import typing as t
 from dataclasses import asdict
@@ -7,10 +9,10 @@ from returns.io import IOSuccess
 from returns.iterables import Fold
 from returns.pipeline import flow
 from returns.pointfree import bind
-from returns.result import ResultE, Success, safe
+from returns.result import Result, ResultE, Success, safe
 
+from pipeline.config_templates.templates import TemplateVars, env
 from pipeline.netbox_service.service import get_netbox_devices
-from pipeline.templates import TemplateVars, env
 from pipeline.vni_service.db import create_connection, create_data
 from pipeline.vni_service.service import get_device_ipam_data, get_vni_data
 
@@ -23,10 +25,9 @@ create_data(CON)
 
 
 @safe
-def render_device_template(
-    device, device_ipam, site_vni_data
-) -> t.Tuple[str, t.Dict[str, str]]:
-    hostname = device["name"]
+def render_device_template(device, device_ipam, site_vni_data) -> t.Tuple[str, str]:
+    """Render a single device configuration template."""
+    hostname: str = device["name"]
     site_name = device["site"]["name"]
     lo5_meta = device_ipam[(hostname, "loopback 5")]
     mgmt_meta = device_ipam[(hostname, "management 1")]
@@ -53,6 +54,7 @@ def render_device_template(
 
 
 def render_all(ext_data):
+    """Helper function to wrap rendering of all templates."""
     devices, vni_data = ext_data
     return Fold.collect(
         map(
@@ -66,17 +68,22 @@ def render_all(ext_data):
 
 
 @safe
-def write_configs_to_file(devices: t.Dict[str, ResultE[str]], basepath: str) -> None:
+def write_configs_to_file(devices: t.Tuple[t.Tuple[str, str], ...], basepath: str) -> None:
+    """Write device configs to a file."""
     path = Path(basepath)
     for hostname, template in devices:
         with open(path.joinpath(hostname), "w") as fp:
             fp.write(template)
 
 
-def run() -> t.Dict[str, t.Any]:
-    Fold.collect([get_netbox_devices(), get_vni_data(CON)], IOSuccess(())).bind(
-        render_all
-    ).bind(lambda devices: write_configs_to_file(devices, "output")).unwrap()
+def run() -> None:
+    """Do all the things!"""
+    flow(
+        Fold.collect([get_netbox_devices(), get_vni_data(CON)], IOSuccess(())),
+        bind(render_all),
+        bind(lambda devices: write_configs_to_file(devices, "output")),
+    ).unwrap()
+    print("Success!")
 
 
 if __name__ == "__main__":
