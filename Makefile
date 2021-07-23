@@ -1,4 +1,5 @@
-.PHONY: clean-pyc
+.PHONY: all
+all: lint static-analysis
 PWD=$(shell pwd)
 DOCKER=docker run --name returns -it -v ${PWD}:/app -w /app returns-demo
 
@@ -28,6 +29,9 @@ run-format:
 lint:
 	black pipeline --check
 	isort --check --profile=black pipeline
-	pylama pipeline
 	flake8 pipeline
+
+.PHONY: static-analysis
+static-analysis:
+	pylama pipeline
 	mypy pipeline

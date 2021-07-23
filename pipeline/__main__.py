@@ -6,14 +6,11 @@ from dataclasses import asdict
 from pathlib import Path
 
 from returns.context import RequiresContext
-from returns.curry import partial
-from returns.functions import tap
 from returns.io import IOSuccess
 from returns.iterables import Fold
 from returns.pipeline import flow
 from returns.pointfree import bind, map_
-from returns.result import ResultE, Success, safe
-from returns.context.requires_context import RequiresContext
+from returns.result import safe
 
 from pipeline.config_templates.templates import TemplateVars, env
 from pipeline.netbox_service.service import get_netbox_devices
@@ -21,9 +18,8 @@ from pipeline.vni_service.db import create_connection, create_data
 from pipeline.vni_service.service import get_device_ipam_data, get_vni_data
 
 
-def render_device_template(
-    device, device_ipam, site_vni_data
-) -> RequiresContext[ResultE[t.Tuple[str, str]], t.Any]:
+@safe
+def render_device_template(device, device_ipam, site_vni_data):
     """Render a single device configuration template."""
     hostname: str = device["name"]
     site_name = device["site"]["name"]
@@ -49,26 +45,30 @@ def render_device_template(
         management_ip_cidr=management_ip_cidr,
     )
     return RequiresContext(
-        safe(lambda template: (hostname, template.render(asdict(template_vars))))
-    )
-
-
-def render_all(ext_data) -> RequiresContext[ResultE[t.Tuple[t.Tuple[str, str]]], t.Any]:
-    """Helper function to wrap rendering of all templates."""
-    devices, vni_data = ext_data
-    return RequiresContext(
-        lambda con: Fold.collect(
-            map(
-                lambda device: get_device_ipam_data(con, device["name"]).map(
-                    lambda ipam: render_device_template(  #  type: ignore
-                        device, ipam, vni_data
-                    )
-                ),
-                devices,
-            ),
-            Success(()),
+        lambda template_env: (
+            hostname,
+            template_env.get_template("switch_template").render(asdict(template_vars)),
         )
     )
+
+
+def render_all(
+    ext_data,
+):
+    """Helper function to wrap rendering of all templates."""
+
+    def inner(devices, vni_data, deps):
+        return map(
+            lambda device: get_device_ipam_data(deps["DBCON"], device["name"]).map(
+                lambda ipam: render_device_template(device, ipam, vni_data).map(
+                    lambda fn: fn(deps["TEMPLATE_ENV"])
+                )
+            ),
+            devices,
+        )
+
+    devices, vni_data = ext_data
+    return RequiresContext(lambda deps: inner(devices, vni_data, deps))  # type: ignore
 
 
 @safe
@@ -86,13 +86,16 @@ def run() -> None:
     """Do all the things!"""
     con = create_connection()
     create_data(con)
-    template = env.get_template("switch_template")
+    template_env = env
+    runtime_settings = {
+        "DBCON": con,
+        "TEMPLATE_ENV": template_env,
+    }
     flow(
-        Fold.collect([get_netbox_devices(), get_vni_data(con)], IOSuccess(())),
+        Fold.collect([get_netbox_devices(), get_vni_data(con)], IOSuccess(())),  # type: ignore
         map_(render_all),
-        bind(lambda res: res(con)),
-        bind(partial(map, lambda fn: fn(template))),
-        bind(lambda devices: write_configs_to_file(devices, "output")),
+        bind(lambda fns: Fold.collect(fns(runtime_settings), IOSuccess(()))),  # type: ignore
+        map_(lambda devices: write_configs_to_file(devices, "output")),  # type: ignore
     ).unwrap()
     print("Success!")
 
